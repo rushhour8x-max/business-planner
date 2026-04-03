@@ -1,0 +1,11 @@
+{
+  "name": "business-planner",
+  "version": "1.0.0",
+  "description": "Secure Business Planner — Quản lý phương án kinh doanh, hợp đồng, kế hoạch",
+  "scripts": {
+    "dev": "npx serve . -l 3000",
+    "start": "npx serve . -l 3000"
+  },
+  "keywords": ["business", "planner", "contracts", "planning"],
+  "license": "MIT"
+}
