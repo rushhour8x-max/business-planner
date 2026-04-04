@@ -69,6 +69,7 @@ const BusinessPlan = (() => {
       <div class="page-header">
         <h1 class="page-title">${t('businessPlan.title')}</h1>
         <div class="page-actions">
+          <button class="btn btn-secondary" onclick="BusinessPlan.exportPDF()">📄 ${t('common.pdf')}</button>
           <button class="btn btn-secondary" onclick="BusinessPlan.exportExcel()">📊 ${t('common.excel')}</button>
           <button class="btn btn-primary" onclick="BusinessPlan.openModal()">+ ${t('businessPlan.newPlan')}</button>
         </div>
@@ -807,7 +808,11 @@ const BusinessPlan = (() => {
   }
 
   function exportExcel() {
-    Toast.show('Export Excel — coming soon', 'info');
+    Export.exportBusinessPlansExcel();
+  }
+
+  function exportPDF() {
+    Export.exportBusinessPlansPDF();
   }
 
   // ── Dashboard stats ──
@@ -826,6 +831,6 @@ const BusinessPlan = (() => {
     renderList, openModal, closeModal, savePlan, confirmDelete, filterList,
     addImportRow, removeImportRow, addDomesticRow, removeDomesticRow,
     recalcImportRow, recalcDomesticRow, recalcType1, recalcType2,
-    fetchRate, onTypeChange, exportExcel, getStats, getAll, formatVND, calcTotalCost, calcRevenue
+    fetchRate, onTypeChange, exportExcel, exportPDF, getStats, getAll, formatVND, calcTotalCost, calcRevenue
   };
 })();

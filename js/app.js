@@ -258,6 +258,9 @@ const App = (() => {
     let html = `
       <div class="page-header">
         <h1 class="page-title">${t('dashboard.title')}</h1>
+        <div class="page-actions">
+          <button class="btn btn-secondary" onclick="Export.exportDashboardPDF()">📄 ${t('common.pdf')}</button>
+        </div>
       </div>
 
       <!-- Stats Grid -->

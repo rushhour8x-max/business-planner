@@ -36,6 +36,8 @@ const Contracts = (() => {
       <div class="page-header">
         <h1 class="page-title">${t('contracts.title')}</h1>
         <div class="page-actions">
+          <button class="btn btn-secondary" onclick="Contracts.exportPDF()">📄 ${t('common.pdf')}</button>
+          <button class="btn btn-secondary" onclick="Contracts.exportExcel()">📊 ${t('common.excel')}</button>
           <button class="btn btn-primary" onclick="Contracts.openModal()">+ ${t('contracts.new')}</button>
         </div>
       </div>`;
@@ -261,8 +263,16 @@ const Contracts = (() => {
     };
   }
 
+  function exportExcel() {
+    Export.exportContractsExcel();
+  }
+
+  function exportPDF() {
+    Export.exportContractsPDF();
+  }
+
   return {
     renderList, openModal, closeModal, saveContract, confirmDelete, filterList,
-    getStats, getAll, getExpiringContracts
+    exportExcel, exportPDF, getStats, getAll, getExpiringContracts
   };
 })();

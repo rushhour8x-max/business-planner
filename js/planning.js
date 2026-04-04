@@ -26,6 +26,8 @@ const Planning = (() => {
             <button class="tab ${currentView === 'kanban' ? 'active' : ''}" onclick="Planning.setView('kanban')">${t('planning.kanban')}</button>
             <button class="tab ${currentView === 'calendar' ? 'active' : ''}" onclick="Planning.setView('calendar')">${t('planning.calendar')}</button>
           </div>
+          <button class="btn btn-secondary" onclick="Planning.exportPDF()">📄 ${t('common.pdf')}</button>
+          <button class="btn btn-secondary" onclick="Planning.exportExcel()">📊 ${t('common.excel')}</button>
           <button class="btn btn-primary" onclick="Planning.openModal()">+ ${t('planning.newTask')}</button>
         </div>
       </div>`;
@@ -338,8 +340,16 @@ const Planning = (() => {
     };
   }
 
+  function exportExcel() {
+    Export.exportTasksExcel();
+  }
+
+  function exportPDF() {
+    Export.exportTasksPDF();
+  }
+
   return {
     renderList, openModal, closeModal, saveTask, confirmDelete,
-    setView, prevMonth, nextMonth, getStats, getAll
+    setView, prevMonth, nextMonth, exportExcel, exportPDF, getStats, getAll
   };
 })();
