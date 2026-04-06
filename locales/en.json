@@ -22,7 +22,8 @@
     "forgotPassword": "Forgot password?",
     "confirmEmail": "Please check your email to confirm your account",
     "resetSent": "Password reset email sent",
-    "enterEmail": "Please enter your email first"
+    "enterEmail": "Please enter your email first",
+    "adminCreatesAccounts": "Accounts are created by Admin. Contact your administrator."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -261,6 +262,15 @@
     "assign": "Assign",
     "taskAssigned": "Task assigned successfully",
     "viewTasks": "View Tasks",
-    "tasksOf": "Tasks of"
+    "tasksOf": "Tasks of",
+    "createUser": "Create Account",
+    "password": "Password",
+    "minPassword": "Minimum 6 characters",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "John Doe",
+    "fillRequired": "Please fill in Email and Password",
+    "createError": "Error creating account",
+    "userCreated": "Account created successfully",
+    "profileWarning": "Account created but profile needs verification in Supabase"
   }
 }

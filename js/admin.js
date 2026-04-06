@@ -97,6 +97,7 @@ const Admin = (() => {
       <div class="page-header">
         <h1 class="page-title">👥 ${t('admin.title')}</h1>
         <div class="page-actions">
+          <button class="btn btn-primary" onclick="Admin.openCreateUser()">+ ${t('admin.createUser')}</button>
           <span class="text-sm text-muted">${users.length} ${t('admin.totalUsers')}</span>
         </div>
       </div>
@@ -336,8 +337,144 @@ const Admin = (() => {
     return usersCache;
   }
 
+  // ── Create new user (admin only) ──
+  function openCreateUser() {
+    const t = I18n.t.bind(I18n);
+
+    const html = `<div class="modal-overlay" onclick="if(event.target===this) Admin.closeModal()">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="modal-title">👤 ${t('admin.createUser')}</h2>
+          <button class="modal-close" onclick="Admin.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input type="email" class="form-input" id="newUserEmail" placeholder="user@company.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">${t('admin.password')} *</label>
+            <input type="text" class="form-input" id="newUserPassword" placeholder="${t('admin.minPassword')}" minlength="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">${t('admin.fullName')}</label>
+            <input type="text" class="form-input" id="newUserName" placeholder="${t('admin.fullNamePlaceholder')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">${t('admin.role')}</label>
+            <select class="form-select" id="newUserRole">
+              <option value="staff">👤 Staff</option>
+              <option value="manager">📋 Manager</option>
+              <option value="admin">👑 Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="Admin.closeModal()">${t('common.cancel')}</button>
+          <button class="btn btn-primary" id="createUserBtn" onclick="Admin.saveNewUser()">👤 ${t('admin.createUser')}</button>
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById('modalContainer').innerHTML = html;
+  }
+
+  async function saveNewUser() {
+    const t = I18n.t.bind(I18n);
+    const email = document.getElementById('newUserEmail')?.value?.trim();
+    const password = document.getElementById('newUserPassword')?.value;
+    const fullName = document.getElementById('newUserName')?.value?.trim();
+    const role = document.getElementById('newUserRole')?.value || 'staff';
+
+    if (!email || !password) {
+      Toast.show(t('admin.fillRequired'), 'error');
+      return;
+    }
+    if (password.length < 6) {
+      Toast.show(t('admin.minPassword'), 'error');
+      return;
+    }
+
+    const btn = document.getElementById('createUserBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner spinner-sm"></span>';
+    }
+
+    const sb = SupabaseClient.getClient();
+    if (!sb) {
+      Toast.show('Supabase not available', 'error');
+      return;
+    }
+
+    // Save admin session before signUp (signUp auto-logs in as the new user)
+    const { data: { session: adminSession } } = await sb.auth.getSession();
+
+    // Step 1: Create auth user via signUp
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName || email.split('@')[0] }
+      }
+    });
+
+    if (error) {
+      Toast.show(t('admin.createError') + ': ' + error.message, 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = `👤 ${t('admin.createUser')}`; }
+      // Restore admin session
+      if (adminSession) await sb.auth.setSession(adminSession);
+      return;
+    }
+
+    const newUserId = data.user?.id;
+    if (!newUserId) {
+      Toast.show(t('admin.createError'), 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = `👤 ${t('admin.createUser')}`; }
+      if (adminSession) await sb.auth.setSession(adminSession);
+      return;
+    }
+
+    // Step 2: Restore admin session FIRST so we have admin privileges
+    if (adminSession) {
+      await sb.auth.setSession(adminSession);
+    }
+
+    // Step 3: Ensure profile exists with correct role
+    await new Promise(r => setTimeout(r, 500));
+
+    // Check if profile was auto-created by trigger
+    const { data: existingProfile } = await sb.from('profiles').select('id').eq('id', newUserId).single();
+
+    if (existingProfile) {
+      // Profile exists from trigger — update role if needed
+      if (role !== 'staff') {
+        await sb.from('profiles').update({ role, updated_at: new Date().toISOString() }).eq('id', newUserId);
+      }
+    } else {
+      // Trigger failed — manually insert profile
+      const { error: insertErr } = await sb.from('profiles').insert({
+        id: newUserId,
+        email,
+        full_name: fullName || email.split('@')[0],
+        role,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      if (insertErr) {
+        console.error('Profile insert error:', insertErr.message);
+        Toast.show(t('admin.profileWarning'), 'warning', 5000);
+      }
+    }
+
+    closeModal();
+    Toast.show(t('admin.userCreated') + ': ' + email, 'success', 5000);
+    App.navigate('admin');
+  }
+
   return {
     isAdmin, getRole, getAllUsers, renderPanel, changeRole,
-    openAssignTask, saveAssignedTask, viewUserTasks, closeModal, getCachedUsers
+    openAssignTask, saveAssignedTask, viewUserTasks, closeModal, getCachedUsers,
+    openCreateUser, saveNewUser
   };
 })();

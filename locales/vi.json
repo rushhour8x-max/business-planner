@@ -22,7 +22,8 @@
     "forgotPassword": "Quên mật khẩu?",
     "confirmEmail": "Vui lòng kiểm tra email để xác nhận tài khoản",
     "resetSent": "Đã gửi email đặt lại mật khẩu",
-    "enterEmail": "Vui lòng nhập email trước"
+    "enterEmail": "Vui lòng nhập email trước",
+    "adminCreatesAccounts": "Tài khoản được tạo bởi Admin. Liên hệ quản trị viên để được cấp."
   },
   "nav": {
     "dashboard": "Tổng quan",
@@ -261,6 +262,15 @@
     "assign": "Giao việc",
     "taskAssigned": "Đã giao việc thành công",
     "viewTasks": "Xem công việc",
-    "tasksOf": "Công việc của"
+    "tasksOf": "Công việc của",
+    "createUser": "Tạo tài khoản",
+    "password": "Mật khẩu",
+    "minPassword": "Tối thiểu 6 ký tự",
+    "fullName": "Họ và tên",
+    "fullNamePlaceholder": "Nguyễn Văn A",
+    "fillRequired": "Vui lòng nhập Email và Mật khẩu",
+    "createError": "Lỗi tạo tài khoản",
+    "userCreated": "Đã tạo tài khoản thành công",
+    "profileWarning": "Tài khoản đã tạo nhưng profile cần được kiểm tra trong Supabase"
   }
 }

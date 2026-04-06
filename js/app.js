@@ -92,22 +92,16 @@ const App = (() => {
                   <input type="password" id="authPassword" class="form-control" 
                     placeholder="${t('auth.password')}" required minlength="6" autocomplete="current-password">
                 </div>
-                <div class="form-group" id="authNameGroup" style="display:none">
-                  <input type="text" id="authName" class="form-control" 
-                    placeholder="${t('auth.fullName')}" autocomplete="name">
-                </div>
                 <button type="submit" class="btn btn-primary btn-lg btn-block" id="authSubmitBtn">
                   🔐 ${t('auth.login')}
                 </button>
               </form>
 
               <div style="margin-top:var(--space-sm);text-align:center">
-                <button class="btn btn-ghost btn-sm" id="authToggleBtn" onclick="App.toggleAuthMode()">
-                  ${t('auth.noAccount')}
-                </button>
-                <button class="btn btn-ghost btn-sm" id="forgotPwBtn" onclick="App.forgotPassword()" style="margin-top:4px">
+                <button class="btn btn-ghost btn-sm" id="forgotPwBtn" onclick="App.forgotPassword()">
                   ${t('auth.forgotPassword')}
                 </button>
+                <p class="text-xs text-muted" style="margin-top:var(--space-xs)">${t('auth.adminCreatesAccounts')}</p>
               </div>
 
               <div class="login-divider">hoặc / or</div>
@@ -621,39 +615,12 @@ const App = (() => {
   }
 
   // ── Auth form handlers ──
-  function toggleAuthMode() {
-    const t = I18n.t.bind(I18n);
-    window._authMode = window._authMode === 'login' ? 'signup' : 'login';
-    const isSignup = window._authMode === 'signup';
-
-    const nameGroup = document.getElementById('authNameGroup');
-    const submitBtn = document.getElementById('authSubmitBtn');
-    const toggleBtn = document.getElementById('authToggleBtn');
-    const forgotBtn = document.getElementById('forgotPwBtn');
-
-    if (nameGroup) nameGroup.style.display = isSignup ? '' : 'none';
-    if (submitBtn) submitBtn.innerHTML = isSignup ? `📝 ${t('auth.signup')}` : `🔐 ${t('auth.login')}`;
-    if (toggleBtn) toggleBtn.textContent = isSignup ? t('auth.hasAccount') : t('auth.noAccount');
-    if (forgotBtn) forgotBtn.style.display = isSignup ? 'none' : '';
-  }
-
   async function handleAuthSubmit(e) {
     e.preventDefault();
     const email = document.getElementById('authEmail')?.value?.trim();
     const password = document.getElementById('authPassword')?.value;
-    const name = document.getElementById('authName')?.value?.trim();
-
     if (!email || !password) return;
-
-    if (window._authMode === 'signup') {
-      const result = await Auth.signupWithEmail(email, password, name);
-      if (result.needsConfirmation) {
-        window._authMode = 'login';
-        toggleAuthMode();
-      }
-    } else {
-      await Auth.loginWithEmail(email, password);
-    }
+    await Auth.loginWithEmail(email, password);
   }
 
   async function forgotPassword() {
@@ -669,7 +636,7 @@ const App = (() => {
 
   return {
     init, navigate, toggleTheme, toggleSidebar, toggleMobileMenu, closeMobileMenu,
-    restoreBackup, handleAuthSubmit, toggleAuthMode, forgotPassword
+    restoreBackup, handleAuthSubmit, forgotPassword
   };
 })();
 
