@@ -460,12 +460,423 @@ const Export = (() => {
     Toast.show(I18n.t('common.success'), 'success');
   }
 
+  // ── Contract DOCX Export (docx.js) ──
+  function exportContractDocx(contractId) {
+    const t = I18n.t.bind(I18n);
+
+    if (typeof docx === 'undefined') {
+      Toast.show('docx.js library not loaded', 'error');
+      return;
+    }
+
+    const contract = contractId ? Contracts.getAll().find(c => c.id === contractId) : null;
+    if (!contract) {
+      Toast.show(t('common.noData'), 'warning');
+      return;
+    }
+
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            WidthType, AlignmentType, BorderStyle, HeadingLevel, ShadingType,
+            TableLayoutType } = docx;
+
+    const isVi = I18n.getLang() === 'vi';
+
+    // Helper: create a table row with label + value
+    function infoRow(label, value, opts = {}) {
+      return new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 3500, type: WidthType.DXA },
+            shading: { type: ShadingType.SOLID, color: 'F0F0F8' },
+            children: [new Paragraph({
+              children: [new TextRun({ text: label, bold: true, size: 22, font: 'Arial' })],
+              spacing: { before: 60, after: 60 },
+              indent: { left: 120 },
+            })],
+          }),
+          new TableCell({
+            width: { size: 6500, type: WidthType.DXA },
+            children: [new Paragraph({
+              children: [new TextRun({
+                text: value || '—',
+                size: 22,
+                font: 'Arial',
+                ...(opts.bold ? { bold: true } : {}),
+                ...(opts.color ? { color: opts.color } : {}),
+              })],
+              spacing: { before: 60, after: 60 },
+              indent: { left: 120 },
+            })],
+          }),
+        ],
+      });
+    }
+
+    // Format date
+    function fmtDate(d) {
+      if (!d) return '—';
+      const dt = new Date(d);
+      return dt.toLocaleDateString(isVi ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    // Format value
+    function fmtValue(v) {
+      if (!v) return '—';
+      const num = parseFloat(v);
+      if (isNaN(num)) return v;
+      return num.toLocaleString('vi-VN') + ' VND';
+    }
+
+    // Status text
+    const statusText = t('contracts.statuses.' + (contract.status || 'drafting'));
+    const typeText = t('contracts.types.' + (contract.type || 'other'));
+
+    // Build document
+    const doc = new Document({
+      creator: 'Business Planner',
+      title: `${isVi ? 'Hợp đồng' : 'Contract'} ${contract.number}`,
+      description: `${contract.partner}`,
+      sections: [{
+        properties: {
+          page: {
+            margin: { top: 1000, right: 1200, bottom: 1000, left: 1200 },
+          },
+        },
+        children: [
+          // ── Header ──
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 80 },
+            children: [new TextRun({
+              text: isVi ? 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM' : 'SOCIALIST REPUBLIC OF VIETNAM',
+              bold: true,
+              size: 24,
+              font: 'Arial',
+            })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+            children: [new TextRun({
+              text: isVi ? 'Độc lập — Tự do — Hạnh phúc' : 'Independence — Freedom — Happiness',
+              size: 22,
+              font: 'Arial',
+              italics: true,
+            })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [new TextRun({
+              text: '━━━━━━━━━━━━━━━━━━━━━',
+              size: 20,
+              color: '6366F1',
+            })],
+          }),
+
+          // ── Title ──
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200, after: 80 },
+            children: [new TextRun({
+              text: (isVi ? 'HỢP ĐỒNG ' : 'CONTRACT ').toUpperCase() + typeText.toUpperCase(),
+              bold: true,
+              size: 32,
+              font: 'Arial',
+              color: '6366F1',
+            })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 },
+            children: [new TextRun({
+              text: `${isVi ? 'Số' : 'No.'}: ${contract.number || '......'}`,
+              bold: true,
+              size: 24,
+              font: 'Arial',
+            })],
+          }),
+
+          // ── Contract Info Table ──
+          new Paragraph({
+            spacing: { before: 100, after: 100 },
+            children: [new TextRun({
+              text: isVi ? 'THÔNG TIN HỢP ĐỒNG' : 'CONTRACT INFORMATION',
+              bold: true,
+              size: 24,
+              font: 'Arial',
+              color: '6366F1',
+            })],
+          }),
+
+          new Table({
+            width: { size: 10000, type: WidthType.DXA },
+            layout: TableLayoutType.FIXED,
+            rows: [
+              infoRow(t('contracts.number'), contract.number, { bold: true }),
+              infoRow(t('contracts.partner'), contract.partner, { bold: true }),
+              infoRow(t('contracts.type'), typeText),
+              infoRow(t('contracts.value'), fmtValue(contract.value), { bold: true, color: '6366F1' }),
+              infoRow(t('contracts.status'), statusText),
+              infoRow(t('contracts.signDate'), fmtDate(contract.signDate)),
+              infoRow(t('contracts.effectiveDate'), fmtDate(contract.effectiveDate)),
+              infoRow(t('contracts.expiryDate'), fmtDate(contract.expiryDate)),
+            ],
+          }),
+
+          // ── Terms ──
+          new Paragraph({
+            spacing: { before: 400, after: 100 },
+            children: [new TextRun({
+              text: isVi ? 'ĐIỀU KHOẢN CHÍNH' : 'KEY TERMS',
+              bold: true,
+              size: 24,
+              font: 'Arial',
+              color: '6366F1',
+            })],
+          }),
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [new TextRun({
+              text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+              size: 16,
+              color: 'CCCCCC',
+            })],
+          }),
+          ...(contract.terms || (isVi ? 'Chưa có điều khoản.' : 'No terms specified.')).split('\n').map(line =>
+            new Paragraph({
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({
+                text: line,
+                size: 22,
+                font: 'Arial',
+              })],
+            })
+          ),
+
+          // ── Signature Block ──
+          new Paragraph({
+            spacing: { before: 600, after: 80 },
+            children: [new TextRun({
+              text: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+              size: 16,
+              color: 'CCCCCC',
+            })],
+          }),
+
+          new Table({
+            width: { size: 10000, type: WidthType.DXA },
+            layout: TableLayoutType.FIXED,
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+              insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 5000, type: WidthType.DXA },
+                    borders: {
+                      top: { style: BorderStyle.NONE },
+                      bottom: { style: BorderStyle.NONE },
+                      left: { style: BorderStyle.NONE },
+                      right: { style: BorderStyle.NONE },
+                    },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({
+                          text: isVi ? 'ĐẠI DIỆN BÊN A' : 'PARTY A',
+                          bold: true, size: 22, font: 'Arial',
+                        })],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 40 },
+                        children: [new TextRun({
+                          text: isVi ? '(Ký, ghi rõ họ tên)' : '(Sign & print name)',
+                          italics: true, size: 18, font: 'Arial', color: '888888',
+                        })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    width: { size: 5000, type: WidthType.DXA },
+                    borders: {
+                      top: { style: BorderStyle.NONE },
+                      bottom: { style: BorderStyle.NONE },
+                      left: { style: BorderStyle.NONE },
+                      right: { style: BorderStyle.NONE },
+                    },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({
+                          text: isVi ? 'ĐẠI DIỆN BÊN B' : 'PARTY B',
+                          bold: true, size: 22, font: 'Arial',
+                        })],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 40 },
+                        children: [new TextRun({
+                          text: isVi ? '(Ký, ghi rõ họ tên)' : '(Sign & print name)',
+                          italics: true, size: 18, font: 'Arial', color: '888888',
+                        })],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+
+          // Footer
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 800 },
+            children: [new TextRun({
+              text: `${isVi ? 'Xuất từ Business Planner' : 'Exported from Business Planner'} — ${new Date().toLocaleDateString(isVi ? 'vi-VN' : 'en-US')}`,
+              size: 16,
+              font: 'Arial',
+              color: 'AAAAAA',
+              italics: true,
+            })],
+          }),
+        ],
+      }],
+    });
+
+    // Generate & download
+    Packer.toBlob(doc).then(blob => {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `contract_${(contract.number || 'draft').replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr}.docx`;
+      saveAs(blob, filename);
+      Toast.show(t('common.success'), 'success');
+    }).catch(err => {
+      console.error('DOCX export error:', err);
+      Toast.show(t('common.error'), 'error');
+    });
+  }
+
+  // ── Contracts List DOCX (all contracts summary) ──
+  function exportContractsListDocx() {
+    const t = I18n.t.bind(I18n);
+    const contracts = Contracts.getAll();
+    if (contracts.length === 0) { Toast.show(t('common.noData'), 'warning'); return; }
+
+    if (typeof docx === 'undefined') {
+      Toast.show('docx.js library not loaded', 'error');
+      return;
+    }
+
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            WidthType, AlignmentType, ShadingType, TableLayoutType, BorderStyle } = docx;
+
+    const isVi = I18n.getLang() === 'vi';
+
+    // Header row
+    const headers = [
+      t('contracts.number'), t('contracts.partner'), t('contracts.type'),
+      t('contracts.value'), t('contracts.expiryDate'), t('contracts.status')
+    ];
+    const colWidths = [1600, 2400, 1400, 1800, 1600, 1400];
+
+    const headerRow = new TableRow({
+      tableHeader: true,
+      children: headers.map((h, i) => new TableCell({
+        width: { size: colWidths[i], type: WidthType.DXA },
+        shading: { type: ShadingType.SOLID, color: '6366F1' },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({ text: h, bold: true, size: 20, font: 'Arial', color: 'FFFFFF' })],
+        })],
+      })),
+    });
+
+    const dataRows = contracts.map((c, idx) => {
+      const vals = [
+        c.number || '',
+        c.partner || '',
+        t('contracts.types.' + (c.type || 'other')),
+        c.value ? parseFloat(c.value).toLocaleString('vi-VN') : '—',
+        c.expiryDate || '—',
+        t('contracts.statuses.' + (c.status || 'drafting')),
+      ];
+      return new TableRow({
+        children: vals.map((v, i) => new TableCell({
+          width: { size: colWidths[i], type: WidthType.DXA },
+          shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: 'F8F8FF' } : undefined,
+          children: [new Paragraph({
+            spacing: { before: 40, after: 40 },
+            indent: { left: 80 },
+            children: [new TextRun({ text: v, size: 20, font: 'Arial' })],
+          })],
+        })),
+      });
+    });
+
+    const doc = new Document({
+      creator: 'Business Planner',
+      title: t('contracts.title'),
+      sections: [{
+        properties: {
+          page: {
+            margin: { top: 800, right: 800, bottom: 800, left: 800 },
+            size: { orientation: 'landscape' },
+          },
+        },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+            children: [new TextRun({
+              text: t('contracts.title').toUpperCase(),
+              bold: true, size: 30, font: 'Arial', color: '6366F1',
+            })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 },
+            children: [new TextRun({
+              text: `${contracts.length} ${isVi ? 'hợp đồng' : 'contracts'} — ${new Date().toLocaleDateString(isVi ? 'vi-VN' : 'en-US')}`,
+              size: 20, font: 'Arial', color: '888888', italics: true,
+            })],
+          }),
+          new Table({
+            width: { size: 10200, type: WidthType.DXA },
+            layout: TableLayoutType.FIXED,
+            rows: [headerRow, ...dataRows],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 400 },
+            children: [new TextRun({
+              text: `Business Planner — ${new Date().toLocaleDateString(isVi ? 'vi-VN' : 'en-US')}`,
+              size: 16, font: 'Arial', color: 'AAAAAA', italics: true,
+            })],
+          }),
+        ],
+      }],
+    });
+
+    Packer.toBlob(doc).then(blob => {
+      saveAs(blob, `contracts_${new Date().toISOString().slice(0, 10)}.docx`);
+      Toast.show(t('common.success'), 'success');
+    });
+  }
+
   return {
     // Generic
     toExcel, toPDF,
     // Module-specific
     exportBusinessPlansExcel, exportBusinessPlansPDF,
-    exportContractsExcel, exportContractsPDF,
+    exportContractsExcel, exportContractsPDF, exportContractDocx, exportContractsListDocx,
     exportTasksExcel, exportTasksPDF,
     exportDashboardPDF,
   };

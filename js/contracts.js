@@ -38,6 +38,7 @@ const Contracts = (() => {
         <div class="page-actions">
           <button class="btn btn-secondary" onclick="Contracts.exportPDF()">📄 ${t('common.pdf')}</button>
           <button class="btn btn-secondary" onclick="Contracts.exportExcel()">📊 ${t('common.excel')}</button>
+          <button class="btn btn-secondary" onclick="Contracts.exportDocx()">📝 Word</button>
           <button class="btn btn-primary" onclick="Contracts.openModal()">+ ${t('contracts.new')}</button>
         </div>
       </div>`;
@@ -114,6 +115,7 @@ const Contracts = (() => {
           <td><span class="status-badge ${statusClass}">${t('contracts.statuses.' + statusClass)}</span></td>
           <td class="actions">
             <button class="btn btn-ghost btn-sm" onclick="Contracts.openModal('${c.id}')" title="${t('common.edit')}">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="Contracts.exportSingleDocx('${c.id}')" title="Word">📝</button>
             <button class="btn btn-ghost btn-sm" onclick="Contracts.confirmDelete('${c.id}')" title="${t('common.delete')}">🗑️</button>
           </td>
         </tr>`;
@@ -271,8 +273,16 @@ const Contracts = (() => {
     Export.exportContractsPDF();
   }
 
+  function exportDocx() {
+    Export.exportContractsListDocx();
+  }
+
+  function exportSingleDocx(id) {
+    Export.exportContractDocx(id);
+  }
+
   return {
     renderList, openModal, closeModal, saveContract, confirmDelete, filterList,
-    exportExcel, exportPDF, getStats, getAll, getExpiringContracts
+    exportExcel, exportPDF, exportDocx, exportSingleDocx, getStats, getAll, getExpiringContracts
   };
 })();
