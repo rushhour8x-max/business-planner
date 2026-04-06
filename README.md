@@ -1,24 +1,32 @@
 # Business Planner
 
-Ứng dụng web quản lý **phương án kinh doanh**, **hợp đồng**, và **kế hoạch dự án** — bảo mật, song ngữ Việt-Anh.
+Ứng dụng web quản lý **phương án kinh doanh**, **hợp đồng**, **kế hoạch dự án**, và **người dùng** — cloud-based, song ngữ Việt-Anh.
+
+## 🌐 Live
+
+> **https://lambent-lebkuchen-0ccb61.netlify.app**
 
 ## Tính năng
 
-- 📋 **Phương án KD** — 2 loại (Sản phẩm/CN + Tư vấn/DV), multi-currency, tỷ giá real-time
-- 📄 **Hợp đồng** — CRUD, cảnh báo hết hạn, tìm kiếm/lọc
+- 📋 **Phương án KD** — 2 loại (Sản phẩm/CN + Tư vấn/DV), multi-currency, tỷ giá real-time, auto-calc chi phí
+- 📄 **Hợp đồng** — CRUD, cảnh báo hết hạn 30 ngày, tìm kiếm/lọc
 - 📌 **Kế hoạch** — Kanban board (drag & drop) + Calendar view
-- 🔐 **Bảo mật** — Netlify Identity + Web Crypto API (AES-GCM 256-bit)
+- 👥 **Admin Panel** — Quản lý user, phân quyền (Admin/Manager/Staff), giao task
+- 🔐 **Supabase Auth** — Đăng ký/nhập email, auto-lock 30 phút
+- ☁️ **Cloud Database** — Supabase PostgreSQL + Row Level Security
 - 🌐 **Song ngữ** — Tiếng Việt / English
 - 🌙 **Dark/Light mode**
 - 📱 **Responsive** — Desktop, Tablet, Mobile
+- 📊 **Export** — PDF báo cáo + Excel dữ liệu
 - 💾 **Backup/Restore** dữ liệu
 
 ## Công nghệ
 
 - HTML / CSS / Vanilla JavaScript
+- Supabase (Auth + PostgreSQL + RLS)
 - Chart.js (biểu đồ dashboard)
-- Netlify Identity (xác thực)
-- Web Crypto API (mã hóa dữ liệu)
+- jsPDF + SheetJS (xuất PDF/Excel)
+- Netlify (hosting + CI/CD)
 
 ## Chạy local
 
@@ -28,4 +36,14 @@ npx serve . -l 3000
 
 ## Deploy
 
-Push lên GitHub → Kết nối Netlify → Bật Netlify Identity.
+Push lên GitHub → tự động deploy Netlify.
+
+```bash
+git add -A
+git commit -m "feat: ..."
+git push origin master
+```
+
+## Tài liệu
+
+- [SPEC.md](SPEC.md) — Functional Specification đầy đủ
