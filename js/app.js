@@ -181,6 +181,11 @@ const App = (() => {
             <span class="nav-label">${t('nav.planning')}</span>
             ${taskStats.overdue > 0 ? `<span class="nav-badge">${taskStats.overdue}</span>` : ''}
           </div>
+          ${Auth.isCloudUser() ? `
+          <div class="nav-item ${currentPage === 'admin' ? 'active' : ''}" onclick="App.navigate('admin')">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">${t('nav.admin')}</span>
+          </div>` : ''}
         </div>
         <div class="nav-section">
           <div class="nav-section-title">SYSTEM</div>
@@ -256,7 +261,8 @@ const App = (() => {
       'dashboard': 'nav.dashboard',
       'business-plan': 'nav.businessPlan',
       'contracts': 'nav.contracts',
-      'planning': 'nav.planning'
+      'planning': 'nav.planning',
+      'admin': 'nav.admin'
     };
     if (headerTitle) headerTitle.textContent = t(pageKeyMap[page] || page);
 
@@ -277,6 +283,9 @@ const App = (() => {
         break;
       case 'planning':
         Planning.renderList(content);
+        break;
+      case 'admin':
+        Admin.renderPanel(content);
         break;
       default:
         renderDashboard(content);

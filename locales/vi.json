@@ -29,6 +29,7 @@
     "businessPlan": "Phương án KD",
     "contracts": "Hợp đồng",
     "planning": "Kế hoạch",
+    "admin": "Quản lý",
     "settings": "Cài đặt",
     "backup": "Sao lưu"
   },
@@ -239,5 +240,27 @@
     "language": "Ngôn ngữ",
     "all": "Tất cả",
     "compare": "So sánh"
+  },
+  "admin": {
+    "title": "Quản lý Người dùng",
+    "accessDenied": "Không có quyền truy cập",
+    "adminOnly": "Chỉ Admin mới có thể xem trang này",
+    "loading": "Đang tải danh sách...",
+    "totalUsers": "người dùng",
+    "user": "Người dùng",
+    "role": "Vai trò",
+    "tasks": "Công việc",
+    "joined": "Ngày tham gia",
+    "actions": "Thao tác",
+    "taskCount": "task",
+    "roleUpdated": "Đã cập nhật vai trò",
+    "confirmRoleChange": "Xác nhận thay đổi vai trò?",
+    "cantChangeSelf": "Không thể thay đổi vai trò của chính mình",
+    "assignTask": "Giao việc",
+    "assignTaskTo": "Giao việc cho",
+    "assign": "Giao việc",
+    "taskAssigned": "Đã giao việc thành công",
+    "viewTasks": "Xem công việc",
+    "tasksOf": "Công việc của"
   }
 }

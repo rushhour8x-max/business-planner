@@ -29,6 +29,7 @@
     "businessPlan": "Business Plans",
     "contracts": "Contracts",
     "planning": "Planning",
+    "admin": "Admin",
     "settings": "Settings",
     "backup": "Backup"
   },
@@ -239,5 +240,27 @@
     "language": "Language",
     "all": "All",
     "compare": "Compare"
+  },
+  "admin": {
+    "title": "User Management",
+    "accessDenied": "Access Denied",
+    "adminOnly": "Only Admin can view this page",
+    "loading": "Loading users...",
+    "totalUsers": "users",
+    "user": "User",
+    "role": "Role",
+    "tasks": "Tasks",
+    "joined": "Joined",
+    "actions": "Actions",
+    "taskCount": "tasks",
+    "roleUpdated": "Role updated",
+    "confirmRoleChange": "Confirm role change?",
+    "cantChangeSelf": "Cannot change your own role",
+    "assignTask": "Assign Task",
+    "assignTaskTo": "Assign task to",
+    "assign": "Assign",
+    "taskAssigned": "Task assigned successfully",
+    "viewTasks": "View Tasks",
+    "tasksOf": "Tasks of"
   }
 }
