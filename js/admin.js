@@ -46,11 +46,24 @@ const Admin = (() => {
     const sb = SupabaseClient.getClient();
     if (!sb) return false;
 
-    const { error } = await sb.from('profiles').update({ role: newRole, updated_at: new Date().toISOString() }).eq('id', userId);
+    const { data, error } = await sb.from('profiles')
+      .update({ role: newRole, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select();
+
     if (error) {
+      console.error('Role update error:', error);
       Toast.show('Lỗi: ' + error.message, 'error');
       return false;
     }
+
+    // Supabase returns empty array if RLS blocked the update (0 rows affected)
+    if (!data || data.length === 0) {
+      console.error('Role update: 0 rows affected — RLS may be blocking');
+      Toast.show('Lỗi: Không có quyền cập nhật vai trò', 'error');
+      return false;
+    }
+
     Toast.show(I18n.t('admin.roleUpdated'), 'success');
     return true;
   }
@@ -188,13 +201,12 @@ const Admin = (() => {
 
   // ── Change user role ──
   async function changeRole(userId, newRole) {
-    const t = I18n.t.bind(I18n);
-    if (!confirm(t('admin.confirmRoleChange'))) {
-      App.navigate('admin');
-      return;
-    }
+    console.log('changeRole called:', userId, newRole);
     const success = await updateRole(userId, newRole);
     if (success) {
+      App.navigate('admin');
+    } else {
+      // Revert: re-render to show current state
       App.navigate('admin');
     }
   }
