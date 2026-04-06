@@ -1,33 +1,32 @@
 /* ============================================
-   Auth — Authentication Module (Adapter Pattern)
-   Supports: Netlify Identity / Demo Mode
+   Auth — Supabase Authentication Module
+   Supports: Supabase Auth / Demo Mode
    ============================================ */
 const Auth = (() => {
   let currentUser = null;
   let inactivityTimer = null;
-  const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
-  let netlifyIdentity = null;
+  const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-  function init() {
-    // Try to load Netlify Identity
-    if (window.netlifyIdentity) {
-      netlifyIdentity = window.netlifyIdentity;
-      netlifyIdentity.on('init', user => {
-        if (user) {
-          setUser(user);
+  async function init() {
+    const sb = SupabaseClient.getClient();
+    if (sb) {
+      // Check for existing session
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        onLoginSuccess();
+      }
+
+      // Listen for auth state changes (login, logout, token refresh)
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
           onLoginSuccess();
+        } else if (event === 'SIGNED_OUT') {
+          clearUser();
+          onLogout();
         }
       });
-      netlifyIdentity.on('login', user => {
-        setUser(user);
-        onLoginSuccess();
-        netlifyIdentity.close();
-      });
-      netlifyIdentity.on('logout', () => {
-        clearUser();
-        onLogout();
-      });
-      netlifyIdentity.init();
     }
 
     // Start inactivity monitor
@@ -41,12 +40,12 @@ const Auth = (() => {
     }
   }
 
-  function setUser(netlifyUser) {
+  function setUser(supabaseUser) {
     currentUser = {
-      id: netlifyUser.id || 'demo',
-      email: netlifyUser.email || 'demo@example.com',
-      name: netlifyUser.user_metadata?.full_name || netlifyUser.email?.split('@')[0] || 'User',
-      provider: 'netlify'
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+      provider: 'supabase'
     };
   }
 
@@ -55,27 +54,92 @@ const Auth = (() => {
     sessionStorage.removeItem('bp_demo');
   }
 
-  function openLogin() {
-    if (netlifyIdentity) {
-      netlifyIdentity.open('login');
+  // ── Login with email/password ──
+  async function loginWithEmail(email, password) {
+    const sb = SupabaseClient.getClient();
+    if (!sb) {
+      Toast.show('Supabase not available', 'error');
+      return { error: 'Supabase not available' };
     }
+
+    // Show loading state
+    const btn = document.getElementById('authSubmitBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner spinner-sm"></span>';
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `🔐 ${I18n.t('auth.login')}`;
+    }
+
+    if (error) {
+      Toast.show(error.message, 'error');
+      return { error: error.message };
+    }
+
+    return { data };
   }
 
-  function openSignup() {
-    if (netlifyIdentity) {
-      netlifyIdentity.open('signup');
+  // ── Sign up with email/password ──
+  async function signupWithEmail(email, password, fullName) {
+    const sb = SupabaseClient.getClient();
+    if (!sb) {
+      Toast.show('Supabase not available', 'error');
+      return { error: 'Supabase not available' };
     }
+
+    const btn = document.getElementById('authSubmitBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner spinner-sm"></span>';
+    }
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName || email.split('@')[0] }
+      }
+    });
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `📝 ${I18n.t('auth.signup')}`;
+    }
+
+    if (error) {
+      Toast.show(error.message, 'error');
+      return { error: error.message };
+    }
+
+    // Check if email confirmation is required
+    if (data.user && !data.session) {
+      Toast.show(I18n.t('auth.confirmEmail'), 'info', 6000);
+      return { data, needsConfirmation: true };
+    }
+
+    return { data };
   }
 
-  function logout() {
-    if (netlifyIdentity && currentUser?.provider === 'netlify') {
-      netlifyIdentity.logout();
-    } else {
-      clearUser();
-      onLogout();
+  // ── Logout ──
+  async function logout() {
+    const sb = SupabaseClient.getClient();
+    if (sb && currentUser?.provider === 'supabase') {
+      await sb.auth.signOut();
     }
+    // Clear local data cache for cloud users
+    if (currentUser?.provider === 'supabase') {
+      Storage.clear();
+    }
+    clearUser();
+    onLogout();
   }
 
+  // ── Demo Mode ──
   function loginDemo() {
     currentUser = {
       id: 'demo-user',
@@ -87,12 +151,32 @@ const Auth = (() => {
     onLoginSuccess();
   }
 
+  // ── Forgot password ──
+  async function resetPassword(email) {
+    const sb = SupabaseClient.getClient();
+    if (!sb) return;
+
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
+
+    if (error) {
+      Toast.show(error.message, 'error');
+    } else {
+      Toast.show(I18n.t('auth.resetSent'), 'success', 5000);
+    }
+  }
+
   function isAuthenticated() {
     return currentUser !== null;
   }
 
   function getUser() {
     return currentUser;
+  }
+
+  function isCloudUser() {
+    return currentUser?.provider === 'supabase';
   }
 
   function onLoginSuccess() {
@@ -109,7 +193,7 @@ const Auth = (() => {
     }));
   }
 
-  // Inactivity auto-lock
+  // ── Inactivity auto-lock ──
   function setupInactivityMonitor() {
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
     events.forEach(e => {
@@ -137,7 +221,7 @@ const Auth = (() => {
   }
 
   return {
-    init, openLogin, openSignup, logout, loginDemo,
-    isAuthenticated, getUser
+    init, loginWithEmail, signupWithEmail, logout, loginDemo,
+    resetPassword, isAuthenticated, getUser, isCloudUser
   };
 })();

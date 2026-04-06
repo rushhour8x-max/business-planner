@@ -34,12 +34,16 @@ const App = (() => {
     // Init i18n
     await I18n.init();
 
-    // Init auth
-    Auth.init();
+    // Init auth (async — checks Supabase session)
+    await Auth.init();
 
     // Listen for auth changes
-    document.addEventListener('authStateChanged', (e) => {
+    document.addEventListener('authStateChanged', async (e) => {
       if (e.detail.authenticated) {
+        // Pull cloud data if Supabase user
+        if (Auth.isCloudUser()) {
+          await Storage.pullFromCloud();
+        }
         showApp();
       } else {
         showLogin();
@@ -51,11 +55,16 @@ const App = (() => {
       if (Auth.isAuthenticated()) {
         renderSidebar();
         navigate(currentPage);
+      } else {
+        showLogin();
       }
     });
 
     // Check initial auth state
     if (Auth.isAuthenticated()) {
+      if (Auth.isCloudUser()) {
+        await Storage.pullFromCloud();
+      }
       showApp();
     } else {
       showLogin();
@@ -71,10 +80,36 @@ const App = (() => {
             <div class="login-logo">📊</div>
             <h1 class="login-title">${t('app.title')}</h1>
             <p class="login-subtitle">${t('app.subtitle')}</p>
-            <div class="login-actions">
-              <button class="btn btn-primary btn-lg btn-block" onclick="Auth.openLogin()" id="netlifyLoginBtn">
-                🔐 ${t('auth.login')}
-              </button>
+
+            <div class="login-actions" id="authFormContainer">
+              <!-- Login form (default) -->
+              <form id="authForm" onsubmit="App.handleAuthSubmit(event)">
+                <div class="form-group">
+                  <input type="email" id="authEmail" class="form-control" 
+                    placeholder="${t('auth.email')}" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                  <input type="password" id="authPassword" class="form-control" 
+                    placeholder="${t('auth.password')}" required minlength="6" autocomplete="current-password">
+                </div>
+                <div class="form-group" id="authNameGroup" style="display:none">
+                  <input type="text" id="authName" class="form-control" 
+                    placeholder="${t('auth.fullName')}" autocomplete="name">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="authSubmitBtn">
+                  🔐 ${t('auth.login')}
+                </button>
+              </form>
+
+              <div style="margin-top:var(--space-sm);text-align:center">
+                <button class="btn btn-ghost btn-sm" id="authToggleBtn" onclick="App.toggleAuthMode()">
+                  ${t('auth.noAccount')}
+                </button>
+                <button class="btn btn-ghost btn-sm" id="forgotPwBtn" onclick="App.forgotPassword()" style="margin-top:4px">
+                  ${t('auth.forgotPassword')}
+                </button>
+              </div>
+
               <div class="login-divider">hoặc / or</div>
               <button class="btn btn-secondary btn-lg btn-block" onclick="Auth.loginDemo()">
                 🎮 ${t('auth.demoMode')}
@@ -89,6 +124,9 @@ const App = (() => {
           </div>
         </div>
       </div>`;
+
+    // Store auth mode state
+    if (!window._authMode) window._authMode = 'login';
   }
 
   function showApp() {
@@ -573,8 +611,56 @@ const App = (() => {
     Storage.save('demo_loaded', true);
   }
 
+  // ── Auth form handlers ──
+  function toggleAuthMode() {
+    const t = I18n.t.bind(I18n);
+    window._authMode = window._authMode === 'login' ? 'signup' : 'login';
+    const isSignup = window._authMode === 'signup';
+
+    const nameGroup = document.getElementById('authNameGroup');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const toggleBtn = document.getElementById('authToggleBtn');
+    const forgotBtn = document.getElementById('forgotPwBtn');
+
+    if (nameGroup) nameGroup.style.display = isSignup ? '' : 'none';
+    if (submitBtn) submitBtn.innerHTML = isSignup ? `📝 ${t('auth.signup')}` : `🔐 ${t('auth.login')}`;
+    if (toggleBtn) toggleBtn.textContent = isSignup ? t('auth.hasAccount') : t('auth.noAccount');
+    if (forgotBtn) forgotBtn.style.display = isSignup ? 'none' : '';
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById('authEmail')?.value?.trim();
+    const password = document.getElementById('authPassword')?.value;
+    const name = document.getElementById('authName')?.value?.trim();
+
+    if (!email || !password) return;
+
+    if (window._authMode === 'signup') {
+      const result = await Auth.signupWithEmail(email, password, name);
+      if (result.needsConfirmation) {
+        window._authMode = 'login';
+        toggleAuthMode();
+      }
+    } else {
+      await Auth.loginWithEmail(email, password);
+    }
+  }
+
+  async function forgotPassword() {
+    const t = I18n.t.bind(I18n);
+    const email = document.getElementById('authEmail')?.value?.trim();
+    if (!email) {
+      Toast.show(t('auth.enterEmail'), 'warning');
+      document.getElementById('authEmail')?.focus();
+      return;
+    }
+    await Auth.resetPassword(email);
+  }
+
   return {
-    init, navigate, toggleTheme, toggleSidebar, toggleMobileMenu, closeMobileMenu, restoreBackup
+    init, navigate, toggleTheme, toggleSidebar, toggleMobileMenu, closeMobileMenu,
+    restoreBackup, handleAuthSubmit, toggleAuthMode, forgotPassword
   };
 })();
 

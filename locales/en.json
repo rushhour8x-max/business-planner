@@ -10,12 +10,19 @@
     "signup": "Sign Up",
     "email": "Email",
     "password": "Password",
+    "fullName": "Full Name",
     "welcome": "Welcome",
     "sessionExpired": "Session expired. Please log in again.",
     "autoLock": "Auto-locked due to inactivity",
     "loginRequired": "Please log in to continue",
     "demoMode": "Demo Mode",
-    "demoDesc": "Explore the app with sample data"
+    "demoDesc": "Explore the app with sample data",
+    "noAccount": "Don't have an account? Sign Up",
+    "hasAccount": "Already have an account? Log In",
+    "forgotPassword": "Forgot password?",
+    "confirmEmail": "Please check your email to confirm your account",
+    "resetSent": "Password reset email sent",
+    "enterEmail": "Please enter your email first"
   },
   "nav": {
     "dashboard": "Dashboard",

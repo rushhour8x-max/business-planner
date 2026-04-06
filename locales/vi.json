@@ -10,12 +10,19 @@
     "signup": "Đăng ký",
     "email": "Email",
     "password": "Mật khẩu",
+    "fullName": "Họ và tên",
     "welcome": "Chào mừng",
     "sessionExpired": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.",
     "autoLock": "Tự động khóa do không hoạt động",
     "loginRequired": "Vui lòng đăng nhập để tiếp tục",
     "demoMode": "Chế độ Demo",
-    "demoDesc": "Khám phá ứng dụng với dữ liệu mẫu"
+    "demoDesc": "Khám phá ứng dụng với dữ liệu mẫu",
+    "noAccount": "Chưa có tài khoản? Đăng ký",
+    "hasAccount": "Đã có tài khoản? Đăng nhập",
+    "forgotPassword": "Quên mật khẩu?",
+    "confirmEmail": "Vui lòng kiểm tra email để xác nhận tài khoản",
+    "resetSent": "Đã gửi email đặt lại mật khẩu",
+    "enterEmail": "Vui lòng nhập email trước"
   },
   "nav": {
     "dashboard": "Tổng quan",
