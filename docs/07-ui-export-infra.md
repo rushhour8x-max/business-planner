@@ -135,23 +135,32 @@ Content-Security-Policy:
 
 | # | Hạn chế |
 |---|---------|
-| 1 | Chưa có realtime sync (2 tab/device không đồng bộ tự động) |
-| 2 | Manager role chưa khác biệt Staff |
-| 3 | Chưa upload file đính kèm cho hợp đồng |
-| 4 | Chưa có push notification cho task deadline |
-| 5 | Font tiếng Việt trong PDF — jsPDF không hỗ trợ Unicode natively |
+| 1 | Manager role chưa khác biệt Staff (đã đổi role được) |
+| 2 | Chưa upload file đính kèm cho hợp đồng |
+| 3 | Chưa có push notification cho task deadline |
+
+### Đã khắc phục (v1.1)
+
+| # | Feature | Chi tiết |
+|---|---------|----------|
+| 1 | **Realtime Sync** | Supabase Channels — auto-refresh khi data thay đổi từ thiết bị/tab khác |
+| 2 | **Font tiếng Việt PDF** | Roboto Vietnamese từ CDN, hỗ trợ Unicode đầy đủ |
+| 3 | **Admin tạo tài khoản** | Modal trong Admin Panel, session preservation |
+| 4 | **RLS WITH CHECK** | Fix silent update failure cho role change |
 
 ### Định hướng mở rộng
 
 | Feature | Ưu tiên |
 |---------|---------|
-| Realtime subscription (Supabase Channels) | Cao |
 | Manager role — quản lý team | Trung bình |
 | File upload (Supabase Storage) | Trung bình |
 | Email notification cho deadline | Trung bình |
+| Admin xem data nhân viên | Trung bình |
 | PWA (Progressive Web App) | Thấp |
 | Custom domain | Thấp |
 | Audit log | Thấp |
+| Search toàn cục | Thấp |
+| Dashboard nâng cao | Thấp |
 
 ---
 

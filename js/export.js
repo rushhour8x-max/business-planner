@@ -47,8 +47,48 @@ const Export = (() => {
     Toast.show(I18n.t('common.success'), 'success');
   }
 
+  // ── Vietnamese Unicode Font for PDF ──
+  let _fontLoaded = false;
+  let _fontBase64 = null;
+
+  async function _loadUnicodeFont(doc) {
+    if (_fontLoaded && _fontBase64) {
+      doc.addFileToVFS('Roboto-Regular.ttf', _fontBase64);
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      doc.addFileToVFS('Roboto-Bold.ttf', _fontBase64); // Use same for bold fallback
+      doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+      return true;
+    }
+
+    try {
+      // Load Roboto from Google Fonts CDN
+      const response = await fetch('https://cdn.jsdelivr.net/fontsource/fonts/roboto@latest/vietnamese-400-normal.ttf');
+      if (!response.ok) throw new Error('Font fetch failed');
+      const buffer = await response.arrayBuffer();
+
+      // Convert to base64
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      _fontBase64 = btoa(binary);
+      _fontLoaded = true;
+
+      doc.addFileToVFS('Roboto-Regular.ttf', _fontBase64);
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      doc.addFileToVFS('Roboto-Bold.ttf', _fontBase64);
+      doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+      console.log('✅ Roboto Vietnamese font loaded for PDF');
+      return true;
+    } catch (e) {
+      console.warn('Font load failed, using helvetica:', e.message);
+      return false;
+    }
+  }
+
   // ── PDF Export (jsPDF + AutoTable) ──
-  function toPDF(title, data, columns, filename = 'export', options = {}) {
+  async function toPDF(title, data, columns, filename = 'export', options = {}) {
     if (typeof window.jspdf === 'undefined') {
       Toast.show('jsPDF library not loaded', 'error');
       return;
@@ -61,6 +101,10 @@ const Export = (() => {
       format: 'a4'
     });
 
+    // Load Unicode font for Vietnamese
+    const hasUnicode = await _loadUnicodeFont(doc);
+    const fontFamily = hasUnicode ? 'Roboto' : 'helvetica';
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -71,12 +115,12 @@ const Export = (() => {
     doc.rect(0, 0, pageWidth * 0.4, 28, 'F');
 
     // Title
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontFamily, 'bold');
     doc.setFontSize(16);
     doc.setTextColor(255, 255, 255);
     doc.text('Business Planner', 14, 12);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(fontFamily, 'normal');
     doc.text(title, 14, 20);
 
     // Date on right
@@ -95,11 +139,11 @@ const Export = (() => {
         doc.setFillColor(245, 245, 255);
         doc.roundedRect(x, startY, statBoxWidth - 4, 18, 2, 2, 'F');
         doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        doc.setFont(fontFamily, 'bold');
         doc.setTextColor(99, 102, 241);
         doc.text(String(stat.value), x + (statBoxWidth - 4) / 2, startY + 8, { align: 'center' });
         doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(fontFamily, 'normal');
         doc.setTextColor(120, 120, 140);
         doc.text(stat.label, x + (statBoxWidth - 4) / 2, startY + 14, { align: 'center' });
       });
@@ -120,6 +164,9 @@ const Export = (() => {
       body,
       startY,
       theme: 'grid',
+      styles: {
+        font: fontFamily,
+      },
       headStyles: {
         fillColor: [99, 102, 241],
         textColor: [255, 255, 255],
@@ -316,7 +363,7 @@ const Export = (() => {
   }
 
   // ── Dashboard Export ──
-  function exportDashboardPDF() {
+  async function exportDashboardPDF() {
     const t = I18n.t.bind(I18n);
     const bpStats = BusinessPlan.getStats();
     const ctStats = Contracts.getStats();
@@ -329,12 +376,14 @@ const Export = (() => {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const hasUnicode = await _loadUnicodeFont(doc);
+    const fontFamily = hasUnicode ? 'Roboto' : 'helvetica';
     const pageWidth = doc.internal.pageSize.getWidth();
 
     // Header
     doc.setFillColor(99, 102, 241);
     doc.rect(0, 0, pageWidth, 28, 'F');
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontFamily, 'bold');
     doc.setFontSize(16);
     doc.setTextColor(255, 255, 255);
     doc.text('Business Planner — Dashboard Report', 14, 12);
@@ -342,7 +391,7 @@ const Export = (() => {
       year: 'numeric', month: 'long', day: 'numeric'
     });
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(fontFamily, 'normal');
     doc.text(dateStr, 14, 20);
 
     let y = 36;
@@ -360,19 +409,19 @@ const Export = (() => {
       const x = 14 + i * (cardW + 4);
       doc.setFillColor(...s.color);
       doc.roundedRect(x, y, cardW, 22, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(fontFamily, 'bold');
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
       doc.text(String(s.value), x + cardW / 2, y + 10, { align: 'center' });
       doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontFamily, 'normal');
       doc.text(s.label, x + cardW / 2, y + 17, { align: 'center' });
     });
 
     y += 30;
 
     // Business Plans table
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontFamily, 'bold');
     doc.setFontSize(11);
     doc.setTextColor(50, 50, 60);
     doc.text(t('businessPlan.title'), 14, y);
@@ -395,6 +444,7 @@ const Export = (() => {
         }),
         startY: y,
         theme: 'striped',
+        styles: { font: fontFamily },
         headStyles: { fillColor: [139, 92, 246], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         margin: { left: 14, right: 14 },
@@ -403,7 +453,7 @@ const Export = (() => {
     }
 
     // Contracts table
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontFamily, 'bold');
     doc.setFontSize(11);
     doc.setTextColor(50, 50, 60);
     doc.text(t('contracts.title'), 14, y);
@@ -422,6 +472,7 @@ const Export = (() => {
         ]),
         startY: y,
         theme: 'striped',
+        styles: { font: fontFamily },
         headStyles: { fillColor: [16, 185, 129], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         margin: { left: 14, right: 14 },
@@ -431,7 +482,7 @@ const Export = (() => {
 
     // Tasks table
     if (y > 250) { doc.addPage(); y = 14; }
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontFamily, 'bold');
     doc.setFontSize(11);
     doc.setTextColor(50, 50, 60);
     doc.text(t('planning.title'), 14, y);
@@ -450,6 +501,7 @@ const Export = (() => {
         ]),
         startY: y,
         theme: 'striped',
+        styles: { font: fontFamily },
         headStyles: { fillColor: [245, 158, 11], textColor: [50, 50, 60], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         margin: { left: 14, right: 14 },

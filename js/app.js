@@ -43,9 +43,11 @@ const App = (() => {
         // Pull cloud data if Supabase user
         if (Auth.isCloudUser()) {
           await Storage.pullFromCloud();
+          Storage.subscribeRealtime();
         }
         showApp();
       } else {
+        Storage.unsubscribeRealtime();
         showLogin();
       }
     });
@@ -60,10 +62,19 @@ const App = (() => {
       }
     });
 
+    // Listen for realtime sync events
+    document.addEventListener('realtimeSync', (e) => {
+      console.log('🔄 UI refresh from realtime:', e.detail);
+      // Re-render current page to show updated data
+      navigate(currentPage);
+      renderSidebar(); // Update badge counts
+    });
+
     // Check initial auth state
     if (Auth.isAuthenticated()) {
       if (Auth.isCloudUser()) {
         await Storage.pullFromCloud();
+        Storage.subscribeRealtime();
       }
       showApp();
     } else {

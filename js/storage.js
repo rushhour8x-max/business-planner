@@ -366,10 +366,103 @@ const Storage = (() => {
     });
   }
 
+  // ── Realtime Sync (Supabase Channels) ──
+  let _realtimeChannel = null;
+
+  function subscribeRealtime() {
+    const sb = SupabaseClient.getClient();
+    if (!sb || !Auth.isCloudUser()) return;
+
+    // Unsubscribe previous if exists
+    unsubscribeRealtime();
+
+    const user = Auth.getUser();
+    if (!user?.id) return;
+
+    // Reverse table → collection mapping
+    const REVERSE_MAP = {};
+    for (const [col, table] of Object.entries(TABLE_MAP)) {
+      REVERSE_MAP[table] = col;
+    }
+
+    _realtimeChannel = sb
+      .channel('storage-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'business_plans',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => _handleRealtimeEvent('business_plans', payload))
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'contracts',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => _handleRealtimeEvent('contracts', payload))
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tasks',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => _handleRealtimeEvent('tasks', payload))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('🔄 Realtime sync active');
+        }
+      });
+  }
+
+  function _handleRealtimeEvent(collection, payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+    console.log(`🔄 Realtime ${eventType} on ${collection}`);
+
+    let items = getCollection(collection);
+    let changed = false;
+
+    if (eventType === 'INSERT') {
+      // Only add if not already exists (prevent duplicate from own writes)
+      if (!items.find(i => i.id === newRow.id)) {
+        const localItem = _toLocalItem(collection, newRow);
+        items.push(localItem);
+        changed = true;
+      }
+    } else if (eventType === 'UPDATE') {
+      const idx = items.findIndex(i => i.id === newRow.id);
+      if (idx !== -1) {
+        const localItem = _toLocalItem(collection, newRow);
+        // Only update if remote is newer
+        if (localItem.updatedAt > items[idx].updatedAt) {
+          items[idx] = localItem;
+          changed = true;
+        }
+      }
+    } else if (eventType === 'DELETE') {
+      const before = items.length;
+      items = items.filter(i => i.id !== oldRow.id);
+      changed = items.length !== before;
+    }
+
+    if (changed) {
+      saveCollection(collection, items);
+      // Dispatch event so UI can re-render
+      document.dispatchEvent(new CustomEvent('realtimeSync', {
+        detail: { collection, eventType }
+      }));
+    }
+  }
+
+  function unsubscribeRealtime() {
+    if (_realtimeChannel) {
+      const sb = SupabaseClient.getClient();
+      if (sb) sb.removeChannel(_realtimeChannel);
+      _realtimeChannel = null;
+    }
+  }
+
   return {
     save, load, remove, clear,
     getCollection, saveCollection, addItem, updateItem, deleteItem, getItem,
     generateId, exportAll, importAll, downloadBackup, restoreBackup,
-    pullFromCloud, pushToCloud
+    pullFromCloud, pushToCloud, subscribeRealtime, unsubscribeRealtime
   };
 })();
