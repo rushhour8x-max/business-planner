@@ -188,14 +188,19 @@ const BusinessPlan = (() => {
         </div>
         <div class="modal-body">
           <!-- Plan Type Selection -->
-          <div class="form-row" style="margin-bottom:var(--space-xl)">
-            <div class="form-group">
-              <label class="form-label">${t('businessPlan.type')}</label>
-              <select class="form-select" id="bp_planType" onchange="BusinessPlan.onTypeChange()">
-                <option value="type1" ${isType2 ? '' : 'selected'}>${t('businessPlan.type1')}</option>
-                <option value="type2" ${isType2 ? 'selected' : ''}>${t('businessPlan.type2')}</option>
-              </select>
+          <div style="margin-bottom:var(--space-xl)">
+            <label class="form-label">${t('businessPlan.type')}</label>
+            <div class="plan-type-selector" id="bp_planType_selector">
+              <button type="button" class="plan-type-card ${isType2 ? '' : 'selected'}" data-value="type1" onclick="BusinessPlan.selectType('type1')">
+                <span class="plan-type-icon">📦</span>
+                <span class="plan-type-label">${t('businessPlan.type1')}</span>
+              </button>
+              <button type="button" class="plan-type-card ${isType2 ? 'selected' : ''}" data-value="type2" onclick="BusinessPlan.selectType('type2')">
+                <span class="plan-type-icon">🤝</span>
+                <span class="plan-type-label">${t('businessPlan.type2')}</span>
+              </button>
             </div>
+            <input type="hidden" id="bp_planType" value="${isType2 ? 'type2' : 'type1'}">
           </div>
 
           <!-- General Info -->
@@ -669,6 +674,24 @@ const BusinessPlan = (() => {
     }
   }
 
+  function selectType(type) {
+    // Update hidden input
+    const hiddenInput = document.getElementById('bp_planType');
+    if (hiddenInput) hiddenInput.value = type;
+
+    // Update card visual state
+    document.querySelectorAll('.plan-type-card').forEach(card => {
+      if (card.dataset.value === type) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+
+    // Trigger field toggle
+    onTypeChange();
+  }
+
   function onTypeChange() {
     const t1 = document.getElementById('bp_type1_fields');
     const t2 = document.getElementById('bp_type2_fields');
@@ -705,7 +728,7 @@ const BusinessPlan = (() => {
     const name = el('bp_name');
 
     if (!name) {
-      Toast.show(I18n.t('common.error') + ': Tên phương án không được trống', 'error');
+      Toast.show(I18n.t('common.error') + ': ' + I18n.t('businessPlan.planName') + ' không được trống', 'error');
       return;
     }
 
@@ -831,6 +854,6 @@ const BusinessPlan = (() => {
     renderList, openModal, closeModal, savePlan, confirmDelete, filterList,
     addImportRow, removeImportRow, addDomesticRow, removeDomesticRow,
     recalcImportRow, recalcDomesticRow, recalcType1, recalcType2,
-    fetchRate, onTypeChange, exportExcel, exportPDF, getStats, getAll, formatVND, calcTotalCost, calcRevenue
+    fetchRate, onTypeChange, selectType, exportExcel, exportPDF, getStats, getAll, formatVND, calcTotalCost, calcRevenue
   };
 })();
