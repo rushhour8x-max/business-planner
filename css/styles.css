@@ -685,6 +685,9 @@ a:hover { color: var(--accent-primary-hover); }
   font-size: var(--font-sm);
   color: var(--text-secondary);
   margin-top: var(--space-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stat-change {
@@ -1669,14 +1672,28 @@ a:hover { color: var(--accent-primary-hover); }
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
   :root {
     --space-2xl: 1rem;
   }
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  .stat-card { padding: var(--space-lg); }
+  .stat-card {
+    padding: var(--space-lg);
+  }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 1.2rem;
+  }
+  .stat-value {
+    font-size: var(--font-xl);
+  }
+  .stat-label {
+    white-space: normal;
+  }
   .login-card { padding: var(--space-xl); }
 }
 
