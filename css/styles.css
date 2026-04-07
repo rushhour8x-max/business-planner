@@ -1636,6 +1636,19 @@ a:hover { color: var(--accent-primary-hover); }
 }
 
 @media (max-width: 768px) {
+  .app-header {
+    padding: 0 var(--space-lg);
+  }
+  .header-right {
+    gap: var(--space-sm);
+  }
+  .user-info .user-name,
+  .user-info .user-role {
+    display: none;
+  }
+  .user-info {
+    padding: var(--space-xs);
+  }
   .page-content {
     padding: var(--space-lg);
   }
