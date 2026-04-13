@@ -176,6 +176,10 @@ const App = (() => {
             <span class="nav-icon">📋</span>
             <span class="nav-label">${t('nav.businessPlan')}</span>
           </div>
+          <div class="nav-item ${currentPage === 'catalog' ? 'active' : ''}" onclick="App.navigate('catalog')">
+            <span class="nav-icon">📦</span>
+            <span class="nav-label">${t('nav.catalog')}</span>
+          </div>
           <div class="nav-item ${currentPage === 'contracts' ? 'active' : ''}" onclick="App.navigate('contracts')">
             <span class="nav-icon">📄</span>
             <span class="nav-label">${t('nav.contracts')}</span>
@@ -265,6 +269,7 @@ const App = (() => {
     const pageKeyMap = {
       'dashboard': 'nav.dashboard',
       'business-plan': 'nav.businessPlan',
+      'catalog': 'nav.catalog',
       'contracts': 'nav.contracts',
       'planning': 'nav.planning',
       'admin': 'nav.admin'
@@ -282,6 +287,9 @@ const App = (() => {
         break;
       case 'business-plan':
         BusinessPlan.renderList(content);
+        break;
+      case 'catalog':
+        Catalog.renderList(content);
         break;
       case 'contracts':
         Contracts.renderList(content);

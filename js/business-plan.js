@@ -10,18 +10,78 @@ const BusinessPlan = (() => {
   // Exchange rate cache
   let rateCache = {};
 
+  // ── Import Equipment Catalog ──
+  const IMPORT_CATALOG = {
+    'Aqualabo': {
+      origin: 'Pháp',
+      currency: 'EUR',
+      equipment: [
+        { name: 'ACTEON 5000 - Đa thông số', partNumber: 'ACT-5000' },
+        { name: 'KAPTA 3000-AC4 - Bộ phân tích Clo', partNumber: 'KAP-3000-AC4' },
+        { name: 'STAC SEN - Cảm biến đo đục', partNumber: 'STAC-SEN-TU' },
+        { name: 'PONSEL ODEON - Đo đa chỉ tiêu cầm tay', partNumber: 'PON-ODEON' },
+        { name: 'DIGISENS - Module đo pH/ORP', partNumber: 'DIGI-PH-ORP' },
+        { name: 'BUBSENS - Cảm biến DO quang học', partNumber: 'BUB-DO-OPT' },
+        { name: 'COND SEN - Cảm biến độ dẫn điện', partNumber: 'COND-SEN-EC' },
+      ]
+    },
+    'Insitu': {
+      origin: 'Mỹ',
+      currency: 'USD',
+      equipment: [
+        { name: 'Aqua TROLL 600 - Đa thông số', partNumber: '0063500' },
+        { name: 'Aqua TROLL 500 - Đa thông số', partNumber: '0050730' },
+        { name: 'Aqua TROLL 200 - Đo mực nước', partNumber: '0052050' },
+        { name: 'RDO PRO-X - Đo oxy hòa tan', partNumber: '0078450' },
+        { name: 'Level TROLL 700 - Đo mực nước + nhiệt độ', partNumber: '0071020' },
+        { name: 'Tube 300R - Telemetry', partNumber: '0061860' },
+        { name: 'HydroVu - Phần mềm giám sát', partNumber: 'HV-SW-001' },
+      ]
+    }
+  };
+
   async function fetchExchangeRate(currency) {
-    if (currency === 'VND') return { rate: 1, date: new Date().toISOString().slice(0, 10) };
+    if (currency === 'VND') return { rate: 1, date: new Date().toISOString().slice(0, 10), source: 'VND' };
     const cacheKey = `${currency}_VND`;
     const cached = rateCache[cacheKey];
     if (cached && (Date.now() - cached.timestamp < 3600000)) { // 1h cache
       return cached;
     }
+
+    // 1) Try Vietcombank XML (Sell/Bán ra rate)
+    try {
+      const vcbUrl = 'https://portal.vietcombank.com.vn/Usercontrols/TVPortal.TyGia/pXML.aspx';
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(vcbUrl)}`;
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+      const xmlText = await res.text();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      const exrates = xmlDoc.querySelectorAll('Exrate');
+      for (const ex of exrates) {
+        if (ex.getAttribute('CurrencyCode') === currency) {
+          const sellStr = ex.getAttribute('Sell');
+          if (sellStr && sellStr !== '-') {
+            const sellRate = parseFloat(sellStr.replace(/,/g, ''));
+            if (!isNaN(sellRate) && sellRate > 0) {
+              const dateEl = xmlDoc.querySelector('DateTime');
+              const dateStr = dateEl?.textContent || new Date().toISOString().slice(0, 10);
+              const result = { rate: sellRate, date: dateStr, source: 'Vietcombank', timestamp: Date.now() };
+              rateCache[cacheKey] = result;
+              return result;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Vietcombank rate fetch failed, trying fallback:', e.message);
+    }
+
+    // 2) Fallback: Open Exchange Rates API
     try {
       const res = await fetch(`https://open.er-api.com/v6/latest/${currency}`);
       const data = await res.json();
       if (data.result === 'success' && data.rates?.VND) {
-        const result = { rate: data.rates.VND, date: data.time_last_update_utc?.slice(0, 16) || new Date().toISOString().slice(0, 10), timestamp: Date.now() };
+        const result = { rate: data.rates.VND, date: data.time_last_update_utc?.slice(0, 16) || new Date().toISOString().slice(0, 10), source: 'Open ER API', timestamp: Date.now() };
         rateCache[cacheKey] = result;
         return result;
       }
@@ -265,21 +325,35 @@ const BusinessPlan = (() => {
 
     let html = `
       <!-- Import Equipment -->
-      <h3 class="section-title" style="margin-top:var(--space-xl)">${t('businessPlan.equipment.title')}</h3>
-      <div id="importEquipmentList">
-        ${imports.map((eq, i) => renderImportRow(eq, i)).join('')}
-      </div>
-      <button class="btn btn-secondary btn-sm mt-lg" onclick="BusinessPlan.addImportRow()">${t('businessPlan.equipment.add')}</button>
+      <details class="collapsible-section" open>
+        <summary class="section-title collapsible-toggle" style="margin-top:var(--space-xl)">${t('businessPlan.equipment.title')}</summary>
+        <div class="collapsible-content">
+          <div id="importEquipmentList">
+            ${imports.map((eq, i) => renderImportRow(eq, i)).join('')}
+          </div>
+          <div style="margin-top:var(--space-lg)">
+            <button class="btn btn-secondary btn-sm" onclick="BusinessPlan.addImportRow()">${t('businessPlan.equipment.add')}</button>
+          </div>
+        </div>
+      </details>
 
       <!-- Domestic Equipment -->
-      <h3 class="section-title" style="margin-top:var(--space-xl)">${t('businessPlan.domestic.title')}</h3>
-      <div id="domesticEquipmentList">
-        ${domestics.map((eq, i) => renderDomesticRow(eq, i)).join('')}
-      </div>
-      <button class="btn btn-secondary btn-sm mt-lg" onclick="BusinessPlan.addDomesticRow()">${t('businessPlan.domestic.add')}</button>
+      <details class="collapsible-section">
+        <summary class="section-title collapsible-toggle" style="margin-top:var(--space-xl)">${t('businessPlan.domestic.title')}</summary>
+        <div class="collapsible-content">
+          <div id="domesticEquipmentList">
+            ${domestics.map((eq, i) => renderDomesticRow(eq, i)).join('')}
+          </div>
+          <div style="margin-top:var(--space-lg)">
+            <button class="btn btn-secondary btn-sm" onclick="BusinessPlan.addDomesticRow()">${t('businessPlan.domestic.add')}</button>
+          </div>
+        </div>
+      </details>
 
       <!-- Services & Logistics -->
-      <h3 class="section-title" style="margin-top:var(--space-xl)">${t('businessPlan.services.title')}</h3>
+      <details class="collapsible-section">
+        <summary class="section-title collapsible-toggle" style="margin-top:var(--space-xl)">${t('businessPlan.services.title')}</summary>
+        <div class="collapsible-content">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">${t('businessPlan.services.transportation')}</label>
@@ -328,6 +402,8 @@ const BusinessPlan = (() => {
           <input type="text" class="form-input" id="svc_contingency" value="${svc.contingency || ''}" oninput="BusinessPlan.recalcType1()">
         </div>
       </div>
+        </div>
+      </details>
 
       <!-- Summary -->
       <h3 class="section-title" style="margin-top:var(--space-xl)">${t('businessPlan.summary.title')}</h3>
@@ -438,6 +514,11 @@ const BusinessPlan = (() => {
 
   function renderImportRow(eq = {}, idx) {
     const t = I18n.t.bind(I18n);
+    const suppliers = Object.keys(IMPORT_CATALOG);
+    const currentSupplier = eq.supplier || '';
+    const equipmentList = IMPORT_CATALOG[currentSupplier]?.equipment || [];
+    const isCustomSupplier = currentSupplier && !IMPORT_CATALOG[currentSupplier];
+
     return `
       <div class="card" style="padding:var(--space-lg);margin-bottom:var(--space-md)" id="importRow_${idx}">
         <div class="flex items-center justify-between mb-lg">
@@ -445,10 +526,32 @@ const BusinessPlan = (() => {
           <button class="btn btn-ghost btn-sm" onclick="BusinessPlan.removeImportRow(${idx})">🗑️</button>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">${t('businessPlan.equipment.name')}</label>
-            <input type="text" class="form-input imp-name" value="${eq.name || ''}"></div>
           <div class="form-group"><label class="form-label">${t('businessPlan.equipment.supplier')}</label>
-            <input type="text" class="form-input imp-supplier" value="${eq.supplier || ''}"></div>
+            <select class="form-select imp-supplier" onchange="BusinessPlan.onSupplierChange(${idx})">
+              <option value="">-- ${t('businessPlan.equipment.selectSupplier')} --</option>
+              ${suppliers.map(s => `<option value="${s}" ${currentSupplier === s ? 'selected' : ''}>${s}</option>`).join('')}
+              <option value="__custom__" ${isCustomSupplier ? 'selected' : ''}>✏️ ${t('businessPlan.equipment.customSupplier')}</option>
+            </select></div>
+          <div class="form-group imp-customSupplier-group" style="${isCustomSupplier ? '' : 'display:none'}"><label class="form-label">${t('businessPlan.equipment.customSupplierName')}</label>
+            <input type="text" class="form-input imp-customSupplierName" value="${isCustomSupplier ? currentSupplier : ''}"></div>
+          <div class="form-group"><label class="form-label">${t('businessPlan.equipment.name')}</label>
+            ${(equipmentList.length > 0 && !isCustomSupplier) ? `
+            <select class="form-select imp-name" onchange="BusinessPlan.onEquipmentChange(${idx})">
+              <option value="">-- ${t('businessPlan.equipment.selectEquipment')} --</option>
+              ${equipmentList.map(e => `<option value="${e.name}" ${eq.name === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+            </select>` : `
+            <input type="text" class="form-input imp-name" value="${eq.name || ''}">`}
+          </div>
+          <div class="form-group"><label class="form-label">${t('businessPlan.equipment.partNumber')}</label>
+            ${(equipmentList.length > 0 && !isCustomSupplier) ? `
+            <select class="form-select imp-partNumber" onchange="BusinessPlan.onPartNumberChange(${idx})">
+              <option value="">-- ${t('businessPlan.equipment.selectPartNumber')} --</option>
+              ${equipmentList.map(e => `<option value="${e.partNumber}" ${eq.partNumber === e.partNumber ? 'selected' : ''}>${e.partNumber}</option>`).join('')}
+            </select>` : `
+            <input type="text" class="form-input imp-partNumber" value="${eq.partNumber || ''}">`}
+          </div>
+          <div class="form-group"><label class="form-label">${t('businessPlan.equipment.origin')}</label>
+            <input type="text" class="form-input imp-origin" value="${eq.origin || (IMPORT_CATALOG[currentSupplier]?.origin || '')}" placeholder="${t('businessPlan.equipment.originPlaceholder')}"></div>
           <div class="form-group"><label class="form-label">${t('businessPlan.equipment.currency')}</label>
             <select class="form-select imp-currency" onchange="BusinessPlan.recalcImportRow(${idx})">
               <option value="USD" ${eq.currency === 'USD' || !eq.currency ? 'selected' : ''}>USD</option>
@@ -662,13 +765,13 @@ const BusinessPlan = (() => {
       recalcImportRow(idx);
       return;
     }
-    Toast.show(`Đang lấy tỷ giá ${currency}/VND...`, 'info');
+    Toast.show(`Đang lấy tỷ giá ${currency}/VND (Vietcombank - Bán ra)...`, 'info');
     const result = await fetchExchangeRate(currency);
     if (result) {
       row.querySelector('.imp-rate').value = result.rate;
       row.querySelector('.imp-rateDate').value = result.date;
       recalcImportRow(idx);
-      Toast.show(`Tỷ giá ${currency}/VND: ${result.rate.toLocaleString()}`, 'success');
+      Toast.show(`Tỷ giá ${currency}/VND: ${result.rate.toLocaleString('vi-VN')} (${result.source})`, 'success');
     } else {
       Toast.show(`Không lấy được tỷ giá ${currency}`, 'error');
     }
@@ -746,9 +849,15 @@ const BusinessPlan = (() => {
       // Collect import equipment
       plan.importEquipment = [];
       document.querySelectorAll('[id^="importRow_"]').forEach(row => {
+        let supplier = row.querySelector('.imp-supplier')?.value || '';
+        if (supplier === '__custom__') {
+          supplier = row.querySelector('.imp-customSupplierName')?.value || '';
+        }
         plan.importEquipment.push({
           name: row.querySelector('.imp-name')?.value || '',
-          supplier: row.querySelector('.imp-supplier')?.value || '',
+          partNumber: row.querySelector('.imp-partNumber')?.value || '',
+          supplier: supplier,
+          origin: row.querySelector('.imp-origin')?.value || '',
           currency: row.querySelector('.imp-currency')?.value || 'USD',
           exchangeRate: row.querySelector('.imp-rate')?.value || '',
           exchangeDate: row.querySelector('.imp-rateDate')?.value || '',
@@ -850,10 +959,125 @@ const BusinessPlan = (() => {
     };
   }
 
+  // ── Supplier/Equipment linked dropdowns ──
+  function _getEquipmentFields(row) {
+    return {
+      nameEl: row.querySelector('.imp-name'),
+      partEl: row.querySelector('.imp-partNumber'),
+    };
+  }
+
+  function _renderNameAndPartDropdowns(container, catalog, idx, selectedName, selectedPart) {
+    const t = I18n.t.bind(I18n);
+    // Find the name form-group and partNumber form-group
+    const nameContainer = container.querySelector('.imp-name')?.closest('.form-group');
+    const partContainer = container.querySelector('.imp-partNumber')?.closest('.form-group');
+
+    if (nameContainer) {
+      nameContainer.innerHTML = `<label class="form-label">${t('businessPlan.equipment.name')}</label>
+        <select class="form-select imp-name" onchange="BusinessPlan.onEquipmentChange(${idx})">
+          <option value="">-- ${t('businessPlan.equipment.selectEquipment')} --</option>
+          ${catalog.equipment.map(e => `<option value="${e.name}" ${selectedName === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+        </select>`;
+    }
+    if (partContainer) {
+      partContainer.innerHTML = `<label class="form-label">${t('businessPlan.equipment.partNumber')}</label>
+        <select class="form-select imp-partNumber" onchange="BusinessPlan.onPartNumberChange(${idx})">
+          <option value="">-- ${t('businessPlan.equipment.selectPartNumber')} --</option>
+          ${catalog.equipment.map(e => `<option value="${e.partNumber}" ${selectedPart === e.partNumber ? 'selected' : ''}>${e.partNumber}</option>`).join('')}
+        </select>`;
+    }
+  }
+
+  function _renderNameAndPartTextInputs(container) {
+    const t = I18n.t.bind(I18n);
+    const nameContainer = container.querySelector('.imp-name')?.closest('.form-group');
+    const partContainer = container.querySelector('.imp-partNumber')?.closest('.form-group');
+
+    if (nameContainer) {
+      nameContainer.innerHTML = `<label class="form-label">${t('businessPlan.equipment.name')}</label>
+        <input type="text" class="form-input imp-name" value="">`;
+    }
+    if (partContainer) {
+      partContainer.innerHTML = `<label class="form-label">${t('businessPlan.equipment.partNumber')}</label>
+        <input type="text" class="form-input imp-partNumber" value="">`;
+    }
+  }
+
+  function onSupplierChange(idx) {
+    const row = document.getElementById(`importRow_${idx}`);
+    if (!row) return;
+    const supplierVal = row.querySelector('.imp-supplier')?.value || '';
+    const customGroup = row.querySelector('.imp-customSupplier-group');
+    const originInput = row.querySelector('.imp-origin');
+    const currencySelect = row.querySelector('.imp-currency');
+
+    if (supplierVal === '__custom__') {
+      if (customGroup) customGroup.style.display = '';
+      _renderNameAndPartTextInputs(row);
+      if (originInput) originInput.value = '';
+    } else if (supplierVal && IMPORT_CATALOG[supplierVal]) {
+      if (customGroup) customGroup.style.display = 'none';
+      const catalog = IMPORT_CATALOG[supplierVal];
+      _renderNameAndPartDropdowns(row, catalog, idx, '', '');
+      if (originInput) originInput.value = catalog.origin || '';
+      if (currencySelect && catalog.currency) {
+        currencySelect.value = catalog.currency;
+      }
+    } else {
+      if (customGroup) customGroup.style.display = 'none';
+      _renderNameAndPartTextInputs(row);
+      if (originInput) originInput.value = '';
+    }
+  }
+
+  function onEquipmentChange(idx) {
+    const row = document.getElementById(`importRow_${idx}`);
+    if (!row) return;
+    const supplierVal = row.querySelector('.imp-supplier')?.value || '';
+    const catalog = IMPORT_CATALOG[supplierVal];
+    if (!catalog) return;
+
+    const selectedName = row.querySelector('.imp-name')?.value || '';
+    const match = catalog.equipment.find(e => e.name === selectedName);
+    const partSelect = row.querySelector('.imp-partNumber');
+    if (partSelect && match) {
+      partSelect.value = match.partNumber;
+    } else if (partSelect) {
+      partSelect.value = '';
+    }
+  }
+
+  function onPartNumberChange(idx) {
+    const row = document.getElementById(`importRow_${idx}`);
+    if (!row) return;
+    const supplierVal = row.querySelector('.imp-supplier')?.value || '';
+    const catalog = IMPORT_CATALOG[supplierVal];
+    if (!catalog) return;
+
+    const selectedPart = row.querySelector('.imp-partNumber')?.value || '';
+    const match = catalog.equipment.find(e => e.partNumber === selectedPart);
+    const nameSelect = row.querySelector('.imp-name');
+    if (nameSelect && match) {
+      nameSelect.value = match.name;
+    } else if (nameSelect) {
+      nameSelect.value = '';
+    }
+  }
+
+  // ── Update catalog from Catalog module ──
+  function updateCatalog(newCatalog) {
+    Object.keys(newCatalog).forEach(key => {
+      IMPORT_CATALOG[key] = newCatalog[key];
+    });
+    console.log('📦 IMPORT_CATALOG updated:', Object.keys(IMPORT_CATALOG));
+  }
+
   return {
     renderList, openModal, closeModal, savePlan, confirmDelete, filterList,
     addImportRow, removeImportRow, addDomesticRow, removeDomesticRow,
     recalcImportRow, recalcDomesticRow, recalcType1, recalcType2,
-    fetchRate, onTypeChange, selectType, exportExcel, exportPDF, getStats, getAll, formatVND, calcTotalCost, calcRevenue
+    fetchRate, onTypeChange, selectType, exportExcel, exportPDF, getStats, getAll, formatVND, calcTotalCost, calcRevenue,
+    onSupplierChange, onEquipmentChange, onPartNumberChange, updateCatalog
   };
 })();
