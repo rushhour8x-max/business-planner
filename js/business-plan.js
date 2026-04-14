@@ -55,13 +55,12 @@ const BusinessPlan = (() => {
     // 1) Try Vietcombank XML (Sell/Bán ra rate)
     try {
       const vcbUrl = 'https://portal.vietcombank.com.vn/Usercontrols/TVPortal.TyGia/pXML.aspx';
-      // Use /get (JSON mode) instead of /raw, as it's often more reliable for bypassing Cloudflare/CORS
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(vcbUrl)}`;
+      // Switch to codetabs.com proxy as allorigins is currently unreliable for portal.vietcombank.com.vn
+      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(vcbUrl)}`;
       const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-      const data = await res.json();
+      const xmlText = await res.text();
       
-      if (data && data.contents) {
-        const xmlText = data.contents;
+      if (xmlText && xmlText.includes('<Exrate')) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         const exrates = xmlDoc.querySelectorAll('Exrate');
@@ -69,7 +68,7 @@ const BusinessPlan = (() => {
           if (ex.getAttribute('CurrencyCode') === currency) {
             const sellStr = ex.getAttribute('Sell');
             if (sellStr && sellStr !== '-') {
-              // Parse correctly (VCB uses comma for thousands, but let's use our robust parser logic)
+              // Standard Bank Format: 31,784.53 (comma for thousands)
               const sellRate = parseFloat(sellStr.replace(/,/g, ''));
               if (!isNaN(sellRate) && sellRate > 0) {
                 const dateEl = xmlDoc.querySelector('DateTime');
