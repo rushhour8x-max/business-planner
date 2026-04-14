@@ -149,10 +149,12 @@ const Catalog = (() => {
 
     // Sample data
     const sampleData = [
-      ['Aqualabo', 'Pháp', 'ACTEON 5000 - Đa thông số', 'ACT-5000', 15000, 'EUR', 'Bộ', 'Bao gồm cáp 10m'],
-      ['Aqualabo', 'Pháp', 'KAPTA 3000-AC4 - Bộ phân tích Clo', 'KAP-3000-AC4', 12000, 'EUR', 'Bộ', ''],
-      ['Insitu', 'Mỹ', 'Aqua TROLL 600 - Đa thông số', '0063500', 9800, 'USD', 'Bộ', 'Bao gồm phụ kiện chuẩn'],
-      ['Insitu', 'Mỹ', 'Aqua TROLL 500 - Đa thông số', '0050730', 7500, 'USD', 'Bộ', ''],
+      ['Aqualabo', 'Pháp', 'ACTEON 5000', 'PF-FIX-C-00085', 15000, 'EUR', 'Bộ', 'Bao gồm cáp 10m'],
+      ['Aqualabo', 'Pháp', 'StacSense', 'PF-CAP-C-00368', 12000, 'EUR', 'Bộ', ''],
+      ['Aqualabo', 'Pháp', 'pH-ORP SENSOR', 'PF-CAP-C-00172', 800, 'EUR', 'Cái', 'Phụ kiện: CARTRIDGE FOR pH-ORP SENSOR PF-CAP-C-00155'],
+      ['Insitu', 'Mỹ', '7300 Monitor', '226974', 4500, 'USD', 'Bộ', ''],
+      ['Insitu', 'Mỹ', 'Aqua TROLL 500, Non-Vented 0-30m', '0050730', 7500, 'USD', 'Bộ', ''],
+      ['Insitu', 'Mỹ', 'Aqua TROLL 500/600 Maintenance Kit', '0078940', 850, 'USD', 'Bộ', 'Includes sponges, O-rings, tools, grease'],
       ['', '', '', '', '', '', '', ''],
     ];
 

@@ -31,7 +31,7 @@
 ## Chạy local
 
 ```bash
-npx serve . -l 3000
+npx serve . -l 5000 -s
 ```
 
 ## Deploy

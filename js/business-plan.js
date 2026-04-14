@@ -16,11 +16,11 @@ const BusinessPlan = (() => {
       origin: 'Pháp',
       currency: 'EUR',
       equipment: [
-        { name: 'ACTEON 5000 - Đa thông số', partNumber: 'ACT-5000' },
-        { name: 'KAPTA 3000-AC4 - Bộ phân tích Clo', partNumber: 'KAP-3000-AC4' },
-        { name: 'STAC SEN - Cảm biến đo đục', partNumber: 'STAC-SEN-TU' },
+        { name: 'ACTEON 5000', partNumber: 'PF-FIX-C-00085' },
+        { name: 'StacSense', partNumber: 'PF-CAP-C-00368' },
+        { name: 'BABYNOX ECO sampler refrigerated 24 bottles 1 l. peristaltic pump', partNumber: 'AQXF112401EPP' },
+        { name: 'pH-ORP SENSOR', partNumber: 'PF-CAP-C-00172', accessories: 'CARTRIDGE FOR pH-ORP SENSOR PF-CAP-C-00155' },
         { name: 'PONSEL ODEON - Đo đa chỉ tiêu cầm tay', partNumber: 'PON-ODEON' },
-        { name: 'DIGISENS - Module đo pH/ORP', partNumber: 'DIGI-PH-ORP' },
         { name: 'BUBSENS - Cảm biến DO quang học', partNumber: 'BUB-DO-OPT' },
         { name: 'COND SEN - Cảm biến độ dẫn điện', partNumber: 'COND-SEN-EC' },
       ]
@@ -29,13 +29,17 @@ const BusinessPlan = (() => {
       origin: 'Mỹ',
       currency: 'USD',
       equipment: [
-        { name: 'Aqua TROLL 600 - Đa thông số', partNumber: '0063500' },
-        { name: 'Aqua TROLL 500 - Đa thông số', partNumber: '0050730' },
-        { name: 'Aqua TROLL 200 - Đo mực nước', partNumber: '0052050' },
-        { name: 'RDO PRO-X - Đo oxy hòa tan', partNumber: '0078450' },
-        { name: 'Level TROLL 700 - Đo mực nước + nhiệt độ', partNumber: '0071020' },
-        { name: 'Tube 300R - Telemetry', partNumber: '0061860' },
-        { name: 'HydroVu - Phần mềm giám sát', partNumber: 'HV-SW-001' },
+        { name: '7300 Monitor', partNumber: '226974' },
+        { name: 'Aqua TROLL 500, Non-Vented 0-30m', partNumber: '0050730' },
+        { name: 'Aqua TROLL 500/600 Wiper', partNumber: '0063500' },
+        { name: 'Aqua TROLL Temperature Only', partNumber: '0063490' },
+        { name: 'Aqua TROLL Turbidity Sensor', partNumber: '0063480' },
+        { name: 'Aqua TROLL Ammonium Sensor', partNumber: '0033700' },
+        { name: 'Aqua TROLL Sensor Port Plug', partNumber: '0063510' },
+        { name: 'Rugged Twist-Lock Cable', partNumber: '0052000' },
+        { name: 'TROLL Com Plus', partNumber: '0104030' },
+        { name: 'Aqua TROLL Reference Junction Kit (for pH/ORP and ISE Sensors)', partNumber: '0078990' },
+        { name: 'Aqua TROLL 500/600 Maintenance Kit', partNumber: '0078940', accessories: 'Includes Calibration Sponges, O-Rings/Grease, Tools, Wiper Brush and Screws, Desiccant and Lens Cloth' },
       ]
     }
   };
@@ -51,23 +55,29 @@ const BusinessPlan = (() => {
     // 1) Try Vietcombank XML (Sell/Bán ra rate)
     try {
       const vcbUrl = 'https://portal.vietcombank.com.vn/Usercontrols/TVPortal.TyGia/pXML.aspx';
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(vcbUrl)}`;
+      // Use /get (JSON mode) instead of /raw, as it's often more reliable for bypassing Cloudflare/CORS
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(vcbUrl)}`;
       const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-      const xmlText = await res.text();
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-      const exrates = xmlDoc.querySelectorAll('Exrate');
-      for (const ex of exrates) {
-        if (ex.getAttribute('CurrencyCode') === currency) {
-          const sellStr = ex.getAttribute('Sell');
-          if (sellStr && sellStr !== '-') {
-            const sellRate = parseFloat(sellStr.replace(/,/g, ''));
-            if (!isNaN(sellRate) && sellRate > 0) {
-              const dateEl = xmlDoc.querySelector('DateTime');
-              const dateStr = dateEl?.textContent || new Date().toISOString().slice(0, 10);
-              const result = { rate: sellRate, date: dateStr, source: 'Vietcombank', timestamp: Date.now() };
-              rateCache[cacheKey] = result;
-              return result;
+      const data = await res.json();
+      
+      if (data && data.contents) {
+        const xmlText = data.contents;
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        const exrates = xmlDoc.querySelectorAll('Exrate');
+        for (const ex of exrates) {
+          if (ex.getAttribute('CurrencyCode') === currency) {
+            const sellStr = ex.getAttribute('Sell');
+            if (sellStr && sellStr !== '-') {
+              // Parse correctly (VCB uses comma for thousands, but let's use our robust parser logic)
+              const sellRate = parseFloat(sellStr.replace(/,/g, ''));
+              if (!isNaN(sellRate) && sellRate > 0) {
+                const dateEl = xmlDoc.querySelector('DateTime');
+                const dateStr = dateEl?.textContent || new Date().toISOString().slice(0, 10);
+                const result = { rate: sellRate, date: dateStr, source: 'Vietcombank', timestamp: Date.now() };
+                rateCache[cacheKey] = result;
+                return result;
+              }
             }
           }
         }
@@ -97,8 +107,47 @@ const BusinessPlan = (() => {
   }
 
   function parseNumber(val) {
-    if (!val) return 0;
-    return parseFloat(String(val).replace(/[,.]/g, '')) || 0;
+    if (val == null || val === '') return 0;
+    if (typeof val === 'number') return val;
+    let s = String(val).trim().replace(/\s/g, '');
+    if (!s) return 0;
+
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+
+    // Case 1: Both separators exist (e.g., 1.234,56 or 1,234.56)
+    if (lastComma > -1 && lastDot > -1) {
+      if (lastComma > lastDot) {
+        // VN style: 1.234,56
+        return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+      } else {
+        // EN style: 1,234.56
+        return parseFloat(s.replace(/,/g, '')) || 0;
+      }
+    }
+
+    // Case 2: Multi-separator (e.g. 1.000.000)
+    const sep = lastComma > -1 ? ',' : (lastDot > -1 ? '.' : null);
+    if (!sep) return parseFloat(s) || 0;
+
+    const parts = s.split(sep);
+    if (parts.length > 2) {
+      return parseFloat(s.split(sep).join('')) || 0;
+    }
+
+    // Case 3: Single separator (e.g. 31784.53 or 4.900)
+    // If it's a dot and followed by exactly 3 digits, it's ambiguous.
+    // We treat it as thousands ONLY if it's the dot (VN style) AND we are sure it's not a decimal.
+    const lastPart = parts[1];
+    if (sep === '.' && lastPart.length === 3) {
+      // Heuristic: In VN context, 4.900 is almost always 4900.
+      // But we should check if there's any reason to suspect it's a decimal.
+      // For now, keep the VN heuristic for user input.
+      return parseFloat(s.replace(/\./g, '')) || 0;
+    }
+    
+    // Default to decimal
+    return parseFloat(s.replace(',', '.')) || 0;
   }
 
   function getAll() {
@@ -684,7 +733,7 @@ const BusinessPlan = (() => {
     // Total import
     let totalImport = 0;
     document.querySelectorAll('.imp-totalLdp').forEach(el => {
-      totalImport += parseNumber(el.value);
+      totalImport += parseFloat(el.value || 0);
     });
 
     // Total domestic
@@ -933,8 +982,8 @@ const BusinessPlan = (() => {
       const status = tr.dataset.status;
       const text = tr.textContent.toLowerCase();
       const show = (!search || text.includes(search)) &&
-                   (!typeFilter || type === typeFilter) &&
-                   (!statusFilter || status === statusFilter);
+        (!typeFilter || type === typeFilter) &&
+        (!statusFilter || status === statusFilter);
       tr.style.display = show ? '' : 'none';
     });
   }
@@ -1043,6 +1092,8 @@ const BusinessPlan = (() => {
     const partSelect = row.querySelector('.imp-partNumber');
     if (partSelect && match) {
       partSelect.value = match.partNumber;
+      const accInput = row.querySelector('.imp-accessories');
+      if (accInput) accInput.value = match.accessories || '';
     } else if (partSelect) {
       partSelect.value = '';
     }
@@ -1060,6 +1111,8 @@ const BusinessPlan = (() => {
     const nameSelect = row.querySelector('.imp-name');
     if (nameSelect && match) {
       nameSelect.value = match.name;
+      const accInput = row.querySelector('.imp-accessories');
+      if (accInput) accInput.value = match.accessories || '';
     } else if (nameSelect) {
       nameSelect.value = '';
     }
